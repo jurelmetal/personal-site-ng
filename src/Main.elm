@@ -1,7 +1,7 @@
 module Main exposing (..)
 
 import Browser
-import Html exposing (Html, Attribute, text, div, button, h1)
+import Html exposing (Html, Attribute, text, div, button)
 import Html.Events exposing (onClick)
 import Html.Attributes exposing (class)
 import Browser exposing (Document)
@@ -12,12 +12,10 @@ main = Browser.document
         init = init,
         view = view,
         update = update,
-        subscriptions = subscriptions
+        subscriptions = (\_ -> Sub.none)
     }
 
-subscriptions : Model -> Sub Msg
-subscriptions _ = Sub.none
-
+-- Base model for the page
 type alias Model = { currentPage : Page }
 type Page = Main | Contact
 type Msg = NoOp | ChangePage Page
