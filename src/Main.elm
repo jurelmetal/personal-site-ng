@@ -1,4 +1,4 @@
-module Main exposing (..)
+module Main exposing (main)
 
 import Browser
 import Html exposing (Html, Attribute, text, div, button, section, p, nav, a, footer)
@@ -7,6 +7,7 @@ import Html.Attributes exposing (class)
 import Browser exposing (Document)
 import Html exposing (strong)
 import Html exposing (h1)
+import Html exposing (option)
 
 main : Program () Model Msg
 main = Browser.document
@@ -18,8 +19,9 @@ main = Browser.document
     }
 
 -- Base model for the page
-type alias Model = { currentPage : Page, calcDisplay : String }
-type alias PageInfo = { title : String }
+type CalcState = Ok | Error
+type alias CalcModel = { state : CalcState, display: String }
+type alias Model = { currentPage : Page, calcModel: CalcModel }
 type Page = Main | FormSubmission | Calculator | APIUsage | Graphics
 pages : List Page
 pages = [ Main, FormSubmission, Calculator, APIUsage, Graphics ]
@@ -47,19 +49,30 @@ type Msg = NoOp | ChangePage Page | CalcInput Key
 
 
 init : () -> ( Model, Cmd Msg )
-init _ = ( Model Main "", Cmd.none )
-
-printValue : a -> Cmd Msg
-printValue value = Debug.log "printValue: " value
-    |> \_ -> Cmd.none
+init _ = ( Model Main (CalcModel Ok ""), Cmd.none )
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model = 
     case msg of
         NoOp -> ( model, Cmd.none )
         ChangePage page -> ( { model | currentPage = page}, Cmd.none )
-        CalcInput (DigitKey digit) -> ( {model | calcDisplay = (model.calcDisplay ++ String.fromInt digit) }, printValue digit)
-        CalcInput (OperatorKey op) -> ( {model | calcDisplay = (model.calcDisplay ++ getOpName op)}, printValue op)
+        CalcInput key -> ( { model | calcModel = updateCalc model.calcModel key }, Cmd.none )
+
+updateCalc : CalcModel -> Key -> CalcModel
+updateCalc model key =
+    case key of
+        DigitKey digit -> addDigit model digit
+        OperatorKey Eq -> evaluateCalc model
+        OperatorKey op -> addOperation model op
+
+evaluateCalc : CalcModel -> CalcModel
+evaluateCalc _ = CalcModel Error "Evaluation not supported yet"
+
+addDigit : CalcModel -> Int -> CalcModel
+addDigit model digit = { model | display = model.display ++ String.fromInt digit }
+
+addOperation : CalcModel -> Operation -> CalcModel
+addOperation model op = { model | display = model.display ++ getOpName op }
 
 view : Model -> Document Msg
 view model = Document "Elm Test Page" [
@@ -79,7 +92,7 @@ drawCurrentPage : Model -> Html Msg
 drawCurrentPage model = 
     case model.currentPage of
         Main -> drawMainPage
-        Calculator -> drawCalculatorPage model
+        Calculator -> drawCalculatorPage model.calcModel
         other -> div [ class "hero"] [
             h1 [] [ text "Under Construction"],
             div [ class "subtitle" ] [
@@ -143,7 +156,7 @@ drawFooter = footer [ class "footer" ] [
 
 -- Calculator page
 
-drawCalculatorPage : Model -> Html Msg
+drawCalculatorPage : CalcModel -> Html Msg
 drawCalculatorPage model = div [ class "is-half", class "is-offset-one-quarter", class "column"] [
         div [ class "tile", class "is-ancestor"] [
             div [ class "tile", class "is-vertical"] (drawScreen model :: drawKeyboard),
@@ -162,10 +175,10 @@ drawOperations = [
         ]
     ]
 
-drawScreen : Model -> Html Msg
+drawScreen : CalcModel -> Html Msg
 drawScreen model = div [ class "tile", class "is-parent" ] [
         div [ class "tile", class "is-child"] [
-            text model.calcDisplay
+            text model.display
         ]
     ]
 
@@ -187,3 +200,4 @@ createOpButton : Operation -> Html Msg
 createOpButton op = button [ onClick (CalcInput (OperatorKey op)), class "tile", class "is-child"] [
         text (getOpName op)
     ]
+
